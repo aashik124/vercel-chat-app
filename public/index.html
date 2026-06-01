@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Local Messenger</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <aside class="sidebar">
+        <section class="profile-panel">
+          <div>
+            <p class="eyebrow">Local Messenger</p>
+            <h1>Chats</h1>
+          </div>
+          <button class="icon-button" id="resetUserButton" title="Switch user" aria-label="Switch user">
+            <span aria-hidden="true">&#8634;</span>
+          </button>
+        </section>
+
+        <form class="login-card" id="authForm">
+          <div class="mode-tabs" role="tablist" aria-label="Account mode">
+            <button class="mode-tab active" id="loginModeButton" type="button">Log in</button>
+            <button class="mode-tab" id="registerModeButton" type="button">Create ID</button>
+            <button class="mode-tab" id="adminModeButton" type="button">Admin</button>
+          </div>
+          <label class="register-only hidden" for="nameInput">Your name</label>
+          <input class="register-only hidden" id="nameInput" name="name" maxlength="40" placeholder="Your name" autocomplete="name" />
+          <label class="login-only" for="idInput">Your chat ID</label>
+          <input class="login-only" id="idInput" name="id" maxlength="40" placeholder="Example: alex1234" autocomplete="username" />
+          <label for="passwordInput" id="passwordLabel">Password</label>
+          <input id="passwordInput" name="password" minlength="4" maxlength="80" type="password" placeholder="Password" autocomplete="current-password" />
+          <p class="form-message" id="formMessage"></p>
+          <button class="wide-button" id="authSubmitButton" type="submit">Log in</button>
+          <button class="text-button login-only" id="forgotPasswordButton" type="button">Forgot password?</button>
+        </form>
+
+        <section class="current-user hidden" id="currentUser">
+          <div class="avatar" id="currentAvatar"></div>
+          <div>
+            <strong id="currentName"></strong>
+            <button class="copy-id" id="copyIdButton" type="button"></button>
+          </div>
+        </section>
+
+        <section class="account-tools hidden" id="accountTools">
+          <button class="account-action" id="showPasswordButton" type="button">Show saved password</button>
+          <button class="account-action" id="editNameButton" type="button">Edit name</button>
+          <button class="account-action danger" id="deleteAccountButton" type="button">Delete account</button>
+          <p class="account-message" id="accountMessage"></p>
+        </section>
+
+        <div class="search-row">
+          <input id="searchInput" placeholder="Search by name or exact ID" />
+        </div>
+
+        <nav class="user-list" id="userList" aria-label="Users"></nav>
+      </aside>
+
+      <section class="conversation">
+        <header class="chat-header" id="chatHeader">
+          <div class="avatar muted">ID</div>
+          <div>
+            <h2>Select a person</h2>
+            <p>Log in, search another chat ID, then send messages.</p>
+          </div>
+        </header>
+
+        <div class="messages" id="messages">
+          <div class="empty-state">
+            <h3>Start by creating your ID</h3>
+            <p>Create an ID with a password, then you can log in again later and keep your conversations.</p>
+          </div>
+        </div>
+
+        <form class="composer" id="messageForm">
+          <input id="messageInput" maxlength="1000" placeholder="Write a message..." autocomplete="off" disabled />
+          <button id="sendButton" type="submit" disabled>Send</button>
+        </form>
+      </section>
+
+      <section class="admin-panel hidden" id="adminPanel">
+        <header class="chat-header">
+          <div class="avatar muted">AD</div>
+          <div>
+            <h2>Admin dashboard</h2>
+            <p>Manage accounts, passwords, sessions, and user messages.</p>
+          </div>
+        </header>
+        <div class="admin-summary" id="adminSummary"></div>
+        <div class="admin-list" id="adminList"></div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

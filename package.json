@@ -1,0 +1,13 @@
+{
+  "name": "vercel-chat-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "check": "node --check api/register.js && node --check api/login.js && node --check api/account.js && node --check api/messages.js && node --check api/users.js && node --check api/admin/login.js && node --check api/admin/users/index.js && node --check api/admin/users/[id].js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "vercel": "latest"
+  }
+}
