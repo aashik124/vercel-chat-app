@@ -648,13 +648,13 @@ input:focus {
   display: none !important;
 }
 
-@media (max-width: 2120px) {
+@media (max-width: 320px) {
   .shell {
     grid-template-columns: 330px minmax(0, 1fr);
   }
 
   .details-panel {
-    
+    display: none;
   }
 
   .admin-panel {
