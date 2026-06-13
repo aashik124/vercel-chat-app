@@ -24,7 +24,7 @@ module.exports = async function handler(req, res) {
     if (!user) return send(res, 401, { error: "Wrong ID or password" });
 
     if (!user.password_hash) {
-      if (password.length < 4) return send(res, 400, { error: "Password must be at least 4 characters" });
+      if (password.length < 8) return send(res, 400, { error: "Password must be at least 8 characters" });
       const passwordData = hashPassword(password);
       await supabase(`chat_users?id=eq.${encodeURIComponent(user.id)}`, {
         method: "PATCH",

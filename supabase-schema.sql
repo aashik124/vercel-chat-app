@@ -22,8 +22,11 @@ create table if not exists public.chat_sessions (
   token text primary key,
   user_id text not null,
   role text not null default 'user',
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  expires_at timestamptz
 );
+
+alter table public.chat_sessions add column if not exists expires_at timestamptz;
 
 create index if not exists chat_messages_from_to_idx on public.chat_messages (from_id, to_id, created_at);
 create index if not exists chat_messages_to_from_idx on public.chat_messages (to_id, from_id, created_at);

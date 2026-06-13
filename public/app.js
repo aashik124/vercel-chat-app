@@ -7,6 +7,9 @@ const nameInput = document.querySelector("#nameInput");
 const idInput = document.querySelector("#idInput");
 const passwordInput = document.querySelector("#passwordInput");
 const passwordLabel = document.querySelector("#passwordLabel");
+const togglePasswordButton = document.querySelector("#togglePasswordButton");
+const passwordMeterBar = document.querySelector("#passwordMeterBar");
+const passwordHint = document.querySelector("#passwordHint");
 const formMessage = document.querySelector("#formMessage");
 const forgotPasswordButton = document.querySelector("#forgotPasswordButton");
 const currentUserPanel = document.querySelector("#currentUser");
@@ -22,14 +25,24 @@ const accountMessage = document.querySelector("#accountMessage");
 const searchInput = document.querySelector("#searchInput");
 const userList = document.querySelector("#userList");
 const chatHeader = document.querySelector("#chatHeader");
+const refreshButton = document.querySelector("#refreshButton");
+const copyPeerButton = document.querySelector("#copyPeerButton");
 const conversation = document.querySelector(".conversation");
+const detailsPanel = document.querySelector("#detailsPanel");
 const adminPanel = document.querySelector("#adminPanel");
 const adminSummary = document.querySelector("#adminSummary");
 const adminList = document.querySelector("#adminList");
+const adminRefreshButton = document.querySelector("#adminRefreshButton");
+const detailsName = document.querySelector("#detailsName");
+const detailsId = document.querySelector("#detailsId");
+const detailsOnline = document.querySelector("#detailsOnline");
+const detailsMessages = document.querySelector("#detailsMessages");
+const detailsUpdated = document.querySelector("#detailsUpdated");
 const messagesPanel = document.querySelector("#messages");
 const messageForm = document.querySelector("#messageForm");
 const messageInput = document.querySelector("#messageInput");
 const sendButton = document.querySelector("#sendButton");
+const toast = document.querySelector("#toast");
 
 let authMode = "login";
 let currentUser = null;
@@ -38,6 +51,8 @@ let users = [];
 let lastMessageSignature = "";
 let token = localStorage.getItem("chat.token") || "";
 let sessionRole = localStorage.getItem("chat.role") || "user";
+let currentMessages = [];
+let toastTimer = null;
 
 function initials(name) {
   return String(name || "?")
@@ -54,6 +69,48 @@ function formatTime(value) {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function showToast(message) {
+  toast.textContent = message;
+  toast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
+}
+
+async function copyText(text, successMessage) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const field = document.createElement("textarea");
+    field.value = text;
+    document.body.appendChild(field);
+    field.select();
+    document.execCommand("copy");
+    field.remove();
+  }
+  showToast(successMessage);
+}
+
+function passwordScore(value) {
+  let score = 0;
+  if (value.length >= 8) score += 1;
+  if (value.length >= 12) score += 1;
+  if (/[a-z]/.test(value) && /[A-Z]/.test(value)) score += 1;
+  if (/\d/.test(value)) score += 1;
+  if (/[^A-Za-z0-9]/.test(value)) score += 1;
+  return Math.min(score, 5);
+}
+
+function updatePasswordMeter() {
+  const score = passwordScore(passwordInput.value);
+  const widths = ["0%", "22%", "42%", "62%", "82%", "100%"];
+  const colors = ["var(--danger)", "var(--danger)", "var(--warning)", "var(--cyan)", "var(--green)", "var(--green)"];
+  passwordMeterBar.style.width = widths[score];
+  passwordMeterBar.style.background = colors[score];
+  passwordHint.textContent = score >= 4
+    ? "Strong password."
+    : "Use at least 8 characters with uppercase, number, and symbol.";
 }
 
 function isOnline(user) {
@@ -87,6 +144,7 @@ function setMode(mode) {
   passwordInput.placeholder = isAdmin ? "Admin password" : "Password";
   passwordInput.autocomplete = isRegistering ? "new-password" : "current-password";
   formMessage.textContent = "";
+  updatePasswordMeter();
 }
 
 function setSession(user, nextToken) {
@@ -100,6 +158,7 @@ function setSession(user, nextToken) {
   renderCurrentUser();
   renderUsers();
   renderHeader();
+  renderDetails();
   loadAccount();
   loadUsers();
 }
@@ -115,6 +174,7 @@ function setAdminSession(admin, nextToken) {
   renderCurrentUser();
   renderAdmin();
   loadAdminUsers();
+  showToast("Admin dashboard opened");
 }
 
 async function clearSession() {
@@ -129,9 +189,11 @@ async function clearSession() {
   selectedUser = null;
   users = [];
   lastMessageSignature = "";
+  currentMessages = [];
   renderCurrentUser();
   renderUsers();
   renderHeader();
+  renderDetails();
   renderAdmin();
   messagesPanel.innerHTML = `
     <div class="empty-state">
@@ -165,6 +227,7 @@ function renderCurrentUser() {
 function renderAdmin() {
   const isAdmin = Boolean(currentUser && currentUser.isAdmin);
   conversation.classList.toggle("hidden", isAdmin);
+  detailsPanel.classList.toggle("hidden", isAdmin);
   adminPanel.classList.toggle("hidden", !isAdmin);
   if (!isAdmin) {
     adminSummary.innerHTML = "";
@@ -214,6 +277,7 @@ function renderHeader() {
         <p>Search another chat ID, then send messages.</p>
       </div>
     `;
+    copyPeerButton.disabled = true;
     return;
   }
 
@@ -226,12 +290,31 @@ function renderHeader() {
   `;
   chatHeader.querySelector("h2").textContent = selectedUser.name;
   chatHeader.querySelector("p").textContent = `ID: ${selectedUser.id}`;
+  copyPeerButton.disabled = false;
+}
+
+function renderDetails() {
+  if (!selectedUser) {
+    detailsName.textContent = "No chat selected";
+    detailsId.textContent = "Choose a user to see account details.";
+    detailsOnline.textContent = "Waiting";
+    detailsMessages.textContent = "0 messages";
+    detailsUpdated.textContent = "Not synced";
+    return;
+  }
+
+  detailsName.textContent = selectedUser.name;
+  detailsId.textContent = `ID: ${selectedUser.id}`;
+  detailsOnline.textContent = isOnline(selectedUser) ? "Online now" : "Offline";
+  detailsMessages.textContent = `${currentMessages.length} messages`;
+  detailsUpdated.textContent = `Synced ${formatTime(new Date().toISOString())}`;
 }
 
 function renderMessages(messages) {
   const signature = messages.map((message) => message.id).join("|");
   if (signature === lastMessageSignature) return;
   lastMessageSignature = signature;
+  currentMessages = messages;
   messagesPanel.innerHTML = "";
 
   if (!messages.length) {
@@ -247,13 +330,27 @@ function renderMessages(messages) {
   for (const message of messages) {
     const bubble = document.createElement("article");
     bubble.className = `bubble${message.from === currentUser.id ? " sent" : ""}`;
-    bubble.innerHTML = `<p></p><span class="time"></span>`;
+    bubble.innerHTML = `<p></p><span class="time"></span><div class="message-tools"></div>`;
     bubble.querySelector("p").textContent = message.text;
     bubble.querySelector(".time").textContent = formatTime(message.createdAt);
+    const tools = bubble.querySelector(".message-tools");
+    const copyButton = document.createElement("button");
+    copyButton.type = "button";
+    copyButton.textContent = "Copy";
+    copyButton.addEventListener("click", () => copyText(message.text, "Message copied"));
+    tools.appendChild(copyButton);
+    if (message.from === currentUser.id) {
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.textContent = "Delete";
+      deleteButton.addEventListener("click", () => deleteMessage(message.id));
+      tools.appendChild(deleteButton);
+    }
     messagesPanel.appendChild(bubble);
   }
 
   messagesPanel.scrollTop = messagesPanel.scrollHeight;
+  renderDetails();
 }
 
 async function loadMe() {
@@ -295,6 +392,7 @@ async function loadUsers() {
 
   renderUsers();
   renderHeader();
+  renderDetails();
 }
 
 async function loadAdminUsers() {
@@ -358,6 +456,15 @@ async function loadMessages() {
   renderMessages(payload.messages);
 }
 
+async function deleteMessage(id) {
+  const confirmed = confirm("Delete this message for everyone?");
+  if (!confirmed) return;
+  await api(`/api/messages?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+  lastMessageSignature = "";
+  await loadMessages();
+  showToast("Message deleted");
+}
+
 function selectUser(user) {
   selectedUser = user;
   lastMessageSignature = "";
@@ -365,6 +472,7 @@ function selectUser(user) {
   sendButton.disabled = false;
   renderHeader();
   renderUsers();
+  renderDetails();
   loadMessages();
   messageInput.focus();
 }
@@ -402,6 +510,7 @@ authForm.addEventListener("submit", async (event) => {
     idInput.value = "";
     passwordInput.value = "";
     setSession(response.user, response.token);
+    showToast(authMode === "register" ? "Account created" : "Logged in");
   } catch (error) {
     formMessage.textContent = error.message;
   }
@@ -439,7 +548,7 @@ messageForm.addEventListener("submit", async (event) => {
 
 copyIdButton.addEventListener("click", async () => {
   if (!currentUser) return;
-  await navigator.clipboard.writeText(currentUser.id);
+  await copyText(currentUser.id, "Your ID copied");
   const original = copyIdButton.textContent;
   copyIdButton.textContent = "Copied ID";
   setTimeout(() => {
@@ -471,6 +580,7 @@ editNameButton.addEventListener("click", async () => {
     renderCurrentUser();
     loadUsers();
     accountMessage.textContent = "Name updated.";
+    showToast("Name updated");
   } catch (error) {
     accountMessage.textContent = error.message;
   }
@@ -489,6 +599,7 @@ deleteAccountButton.addEventListener("click", async () => {
       body: JSON.stringify({ password }),
     });
     await clearSession();
+    showToast("Account deleted");
   } catch (error) {
     accountMessage.textContent = error.message;
   }
@@ -498,6 +609,25 @@ resetUserButton.addEventListener("click", clearSession);
 loginModeButton.addEventListener("click", () => setMode("login"));
 registerModeButton.addEventListener("click", () => setMode("register"));
 adminModeButton.addEventListener("click", () => setMode("admin"));
+togglePasswordButton.addEventListener("click", () => {
+  const isHidden = passwordInput.type === "password";
+  passwordInput.type = isHidden ? "text" : "password";
+  togglePasswordButton.textContent = isHidden ? "Hide" : "Show";
+});
+passwordInput.addEventListener("input", updatePasswordMeter);
+refreshButton.addEventListener("click", async () => {
+  await loadUsers();
+  await loadMessages();
+  showToast("Chat refreshed");
+});
+copyPeerButton.addEventListener("click", () => {
+  if (!selectedUser) return;
+  copyText(selectedUser.id, "User ID copied");
+});
+adminRefreshButton.addEventListener("click", async () => {
+  await loadAdminUsers();
+  showToast("Admin list refreshed");
+});
 searchInput.addEventListener("input", () => {
   if (currentUser && currentUser.isAdmin) {
     loadAdminUsers().catch(console.error);

@@ -18,7 +18,7 @@ module.exports = async function handler(req, res) {
     const name = String(body.name || "").trim().slice(0, 40);
     const password = String(body.password || "");
     if (!name) return send(res, 400, { error: "Name is required" });
-    if (password.length < 4) return send(res, 400, { error: "Password must be at least 4 characters" });
+    if (password.length < 8) return send(res, 400, { error: "Password must be at least 8 characters" });
 
     const id = await createUniqueUserId(name);
     const passwordData = hashPassword(password);

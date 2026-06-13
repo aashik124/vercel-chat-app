@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
+const SESSION_DAYS = Number(process.env.SESSION_DAYS || 14);
 
 function ensureConfig() {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
@@ -16,6 +17,7 @@ function send(res, status, payload) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
   res.end(JSON.stringify(payload));
 }
 
@@ -117,10 +119,11 @@ async function createUniqueUserId(name) {
 }
 
 async function createSession(userId, role = "user") {
+  const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const token = crypto.randomBytes(32).toString("hex");
   await supabase("chat_sessions", {
     method: "POST",
-    body: JSON.stringify([{ token, user_id: userId, role }]),
+    body: JSON.stringify([{ token, user_id: userId, role, expires_at: expiresAt }]),
   });
   return token;
 }
@@ -134,7 +137,13 @@ async function sessionFromRequest(req) {
   const token = bearerToken(req);
   if (!token) return null;
   const sessions = await supabase(`chat_sessions?token=eq.${encodeURIComponent(token)}&select=*`);
-  return sessions[0] || null;
+  const session = sessions[0] || null;
+  if (!session) return null;
+  if (session.expires_at && new Date(session.expires_at).getTime() < Date.now()) {
+    await supabase(`chat_sessions?token=eq.${encodeURIComponent(token)}`, { method: "DELETE" });
+    return null;
+  }
+  return session;
 }
 
 async function currentUser(req) {
